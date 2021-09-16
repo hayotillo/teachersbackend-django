@@ -1,7 +1,9 @@
+from decimal import Decimal
+from ckeditor.fields import RichTextField
 from django.db import models
 from django.db.models import Sum
 from django.utils.html import format_html
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 
@@ -55,24 +57,33 @@ class Specialization(models.Model):
         verbose_name = 'Специализация'
         verbose_name_plural = 'Спациализации'
 
+#
+# class User(AbstractUser):
+#
+#     sur_name = models.CharField(max_length=30, blank=True, null=False, verbose_name='Фамилия')
+
 
 class Teacher(models.Model):
     first_name = models.CharField(max_length=30, blank=False, null=False, verbose_name='Имя')
     last_name = models.CharField(max_length=30, blank=True, null=False, verbose_name='Отчество')
-    sur_name = models.CharField(max_length=30, blank=True, null=False, verbose_name='Фамилия')
+    sur_name = models.CharField(max_length=30, blank=True, null=True, verbose_name='Фамилия')
+    slug = models.CharField(max_length=255, blank=False, null=True, verbose_name='Слаг')
     statuses = (('active', 'Активный'), ('disable', 'Отключен'))
     status = models.CharField(max_length=10, blank=False, choices=statuses, verbose_name='Статус')
-    about = models.TextField(blank=True, null=False, verbose_name='О себе')
+    about = RichTextField(blank=True, null=False, verbose_name='О себе')
     phone = models.CharField(max_length=20, blank=False, verbose_name='Телефон')
     phone2 = models.CharField(max_length=20, blank=True, verbose_name='Запасной телефон')
     post = models.CharField(max_length=100, blank=True, verbose_name='Дольжность')
     telegram = models.CharField(max_length=100, blank=True, verbose_name='Телеграм')
     youtube = models.CharField(max_length=100, blank=True, verbose_name='Ютуб')
-    email = models.CharField(max_length=100, blank=True, verbose_name='Почта')
+    birth_date = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
+    genders = (('male', 'Мурской'), ('female', 'Женский'))
+    gender = models.CharField(max_length=6, choices=genders, blank=False, null=True, verbose_name='Пол')
     photo = models.ImageField(upload_to='uploads/photos/%Y/%m/%d/', blank=True, verbose_name='Фото')
 
-    location = models.ForeignKey(Location, on_delete=models.DO_NOTHING, verbose_name='Адрес')
-    specialization = models.ForeignKey(Specialization, on_delete=models.DO_NOTHING, verbose_name='Специализация')
+    user = models.ForeignKey(User, blank=False, null=False, related_name='teacher', on_delete=models.CASCADE, verbose_name='Учитель')
+    location = models.ForeignKey(Location, null=True, on_delete=models.DO_NOTHING, verbose_name='Адрес')
+    specialization = models.ForeignKey(Specialization, null=True, on_delete=models.DO_NOTHING, verbose_name='Специализация')
     vote = GenericRelation('Vote', related_query_name='teachers')
 
     def __str__(self):
@@ -80,7 +91,12 @@ class Teacher(models.Model):
 
     def photo_tag(self):
         return format_html('<img src="%s" />' % self.photo.url)
+
+    def username_tag(self):
+        return self.user.username
+
     photo_tag.short_description = 'Фото'
+    username_tag.short_description = 'Логин'
     photo_tag.allow_tags = True
 
     class Meta:
@@ -92,13 +108,16 @@ class Teacher(models.Model):
 class Portfolio(models.Model):
     title = models.CharField(max_length=255, blank=False, verbose_name='Названия')
     image = models.ImageField(upload_to='uploads/portfolios/image/%Y/%m/%d/', blank=False, verbose_name='Фото')
-    link = models.CharField(max_length=255, blank=True, verbose_name='Ссыка')
-    file = models.FileField(upload_to='uploads/portfolios/file/%Y/%m/%d/', blank=True, verbose_name='Файл')
+    link = models.CharField(max_length=255, null=True, blank=True, verbose_name='Ссыка')
+    file = models.FileField(upload_to='uploads/portfolios/file/%Y/%m/%d/', blank=True, null=True, verbose_name='Файл')
 
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, verbose_name='Учитель')
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='portfolios', verbose_name='Учитель')
 
     def __str__(self):
         return self.title
+
+    def image_tag(self):
+        return format_html(f'<img src="{self.image}" />')
 
     class Meta:
         db_table = 'teachers_portfolios'
@@ -110,9 +129,9 @@ class Workplace(models.Model):
     name = models.CharField(max_length=100, blank=False, verbose_name='Название учебного заведение')
     post = models.CharField(max_length=100, blank=True, verbose_name='Должность')
     start_date = models.DateField(blank=False, verbose_name='Дата устройсва')
-    end_date = models.DateField(blank=True, verbose_name='Дата увальнения')
+    end_date = models.DateField(blank=True, null=True, verbose_name='Дата увальнения')
 
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, verbose_name='Учитель')
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='workplaces', verbose_name='Учитель')
 
     def __str__(self):
         return self.name
@@ -130,7 +149,7 @@ class Comment(models.Model):
     created_at = models.DateTimeField(auto_created=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата обновление')
 
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, verbose_name='Учитель')
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='comments', verbose_name='Учитель')
 
     def __str__(self):
         return self.name[: 20]
@@ -152,6 +171,24 @@ class VoteManager(models.Manager):
 
     def sum_rating(self):
         return self.get_queryset().aggregate(Sum('vote')).get('vote__sum') or 0
+
+    def get_stars(self):
+        stars = []
+        like_count = self.likes().count()
+        count = self.get_queryset().count()
+        if like_count > 0:
+            percent = like_count / (count / 100)
+        else:
+            percent = 0
+
+        # if percent > 0:
+        star1 = percent >= 1
+        star2 = percent >= 40
+        star3 = percent >= 60
+        star4 = percent >= 80
+        star5 = percent == 100
+        stars = [star1, star2, star3, star4, star5]
+        return stars
 
 
 class Vote(models.Model):
