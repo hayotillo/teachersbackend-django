@@ -66,7 +66,7 @@ class WorkplaceAdmin(admin.ModelAdmin):
 
 # comment
 class CommentAdmin(admin.ModelAdmin):
-    fields = ('name',)
+    fields = ('user', 'teacher', 'status', 'text')
 
 
 admin.site.register(Teacher, TeacherAdmin)

@@ -74,6 +74,7 @@ DATABASES = {
         'USER': 'root',
         'PASSWORD': '7171',
         'HOST': '/Applications/MAMP/tmp/mysql/mysql.sock',
+        'PORT': 8889,
         'OPTIONS': {
             'charset': 'utf8mb4',
             'use_unicode': True,
@@ -134,15 +135,15 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
-        # 'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
         'rest_framework.permissions.IsAdminUser',
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        # 'rest_framework.authentication.BasicAuthentication',
+        'rest_framework.authentication.BasicAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10
 }
+AUTH_USER_MODEL = 'account.User'

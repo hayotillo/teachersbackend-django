@@ -1,11 +1,17 @@
 from decimal import Decimal
+from PIL import Image
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from django.conf import settings
 from ckeditor.fields import RichTextField
 from django.db import models
 from django.db.models import Sum
 from django.utils.html import format_html
-from django.contrib.auth.models import User, AbstractUser
+# from django.contrib.auth.models import User, AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth import get_user_model
+User = get_user_model()
 
 
 class Region(models.Model):
@@ -57,10 +63,52 @@ class Specialization(models.Model):
         verbose_name = 'Специализация'
         verbose_name_plural = 'Спациализации'
 
-#
-# class User(AbstractUser):
-#
-#     sur_name = models.CharField(max_length=30, blank=True, null=False, verbose_name='Фамилия')
+
+class VoteManager(models.Manager):
+    use_for_related_fields = True
+
+    def likes(self):
+        return self.get_queryset().filter(vote__gt=0)
+
+    def dislikes(self):
+        return self.get_queryset().filter(vote__lt=0)
+
+    def sum_rating(self):
+        return self.get_queryset().aggregate(Sum('vote')).get('vote__sum') or 0
+
+    def get_stars(self):
+        like_count = self.likes().count()
+        count = self.get_queryset().count()
+        if like_count > 0:
+            percent = like_count / (count / 100)
+        else:
+            percent = 0
+
+        # if percent > 0:
+        star1 = percent >= 1
+        star2 = percent >= 40
+        star3 = percent >= 60
+        star4 = percent >= 80
+        star5 = percent == 100
+        stars = [star1, star2, star3, star4, star5]
+        return stars
+
+
+class Vote(models.Model):
+    LIKE = 1
+    DISLIKE = -1
+    VOTES = ((LIKE, 'Нравится'), (DISLIKE, 'Не нравится'))
+    vote = models.SmallIntegerField(blank=True, choices=VOTES, verbose_name='Рейтинг')
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=False)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey()
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+
+    objects = VoteManager()
+
+    class Meta:
+        db_table = 'teachers_votes'
 
 
 class Teacher(models.Model):
@@ -85,6 +133,15 @@ class Teacher(models.Model):
     location = models.ForeignKey(Location, null=True, on_delete=models.DO_NOTHING, verbose_name='Адрес')
     specialization = models.ForeignKey(Specialization, null=True, on_delete=models.DO_NOTHING, verbose_name='Специализация')
     vote = GenericRelation('Vote', related_query_name='teachers')
+
+    def save(self, *args, **kwargs):
+        instance = super(Teacher, self).save(*args, **kwargs)
+        if self.photo:
+            image_path = f'{settings.MEDIA_ROOT}/{self.photo}'
+            image = Image.open(image_path)
+            image = image.resize((326, 326))
+            image.save(image_path, quality=100, optimize=True)
+        return instance
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
@@ -144,15 +201,17 @@ class Workplace(models.Model):
 
 class Comment(models.Model):
     text = models.TextField(blank=False, verbose_name='Текст комментарии')
-    reply = models.IntegerField(blank=True, null=True, verbose_name='Ответ на')
-    status = models.CharField(max_length=10, blank=False, default='moderation', verbose_name='Статус')
-    created_at = models.DateTimeField(auto_created=True, verbose_name='Дата создания')
+    reply = models.BigIntegerField(blank=True, null=True, verbose_name='Ответ на')
+    statuses = (('published', 'Опубликован'), ('moderation', 'На модерации'))
+    status = models.CharField(max_length=10, choices=statuses, blank=False, default='moderation', verbose_name='Статус')
+    created_at = models.DateTimeField(auto_now=True, null=True, verbose_name='Дата создания')
     updated_at = models.DateTimeField(auto_now_add=True, verbose_name='Дата обновление')
 
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='comments', verbose_name='Комментарии')
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='comments', verbose_name='Учитель')
 
     def __str__(self):
-        return self.name[: 20]
+        return self.text[: 20]
 
     class Meta:
         db_table = 'teachers_comments'
@@ -160,49 +219,4 @@ class Comment(models.Model):
         verbose_name_plural = 'Комментарии'
 
 
-class VoteManager(models.Manager):
-    use_for_related_fields = True
 
-    def likes(self):
-        return self.get_queryset().filter(vote__gt=0)
-
-    def dislikes(self):
-        return self.get_queryset().filter(vote__lt=0)
-
-    def sum_rating(self):
-        return self.get_queryset().aggregate(Sum('vote')).get('vote__sum') or 0
-
-    def get_stars(self):
-        stars = []
-        like_count = self.likes().count()
-        count = self.get_queryset().count()
-        if like_count > 0:
-            percent = like_count / (count / 100)
-        else:
-            percent = 0
-
-        # if percent > 0:
-        star1 = percent >= 1
-        star2 = percent >= 40
-        star3 = percent >= 60
-        star4 = percent >= 80
-        star5 = percent == 100
-        stars = [star1, star2, star3, star4, star5]
-        return stars
-
-
-class Vote(models.Model):
-    LIKE = 1
-    DISLIKE = -1
-    VOTES = ((LIKE, 'Нравится'), (DISLIKE, 'Не нравится'))
-    vote = models.SmallIntegerField(blank=True, choices=VOTES, verbose_name='Рейтинг')
-
-    user = models.ForeignKey(User, on_delete=models.CASCADE, blank=False)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey()
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-
-    objects = VoteManager()
-
-    class Meta:
-        db_table = 'teachers_votes'
