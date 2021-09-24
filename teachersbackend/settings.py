@@ -30,7 +30,9 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'ckeditor',
     'account',
+    'users',
     'teachers',
+    'training',
 ]
 
 MIDDLEWARE = [

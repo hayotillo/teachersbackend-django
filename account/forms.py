@@ -74,7 +74,7 @@ class UserAdminChangeForm(forms.ModelForm):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password2', 'is_active', 'type']
+        fields = ['username', 'email', 'password', 'password2', 'is_active', 'user_type']
 
     def clean(self):
         '''

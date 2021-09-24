@@ -40,9 +40,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     first_name = None
     last_name = None
     username = models.CharField(_('telegram'), max_length=100, null=False, blank=False, unique=True)
-    user_types = (('user', 'Пользователь'), ('teacher', 'Учитель'), ('training center', 'Учебный центр'))
-    type = models.CharField(_('type'), max_length=20, choices=user_types, null=False, blank=False, default='user')
-    email = models.CharField(_('email'), max_length=100, null=False, blank=True)
+    user_types = (('user', 'Пользователь'), ('teacher', 'Учитель'), ('training', 'Учебный центр'))
+    user_type = models.CharField(_('type'), max_length=20, choices=user_types, null=False, blank=False, default='user')
+    email = models.EmailField(_('email'), max_length=100, null=False, blank=True)
     phone = models.CharField(_('phone'), max_length=100, null=True, blank=True)
 
     is_staff = models.BooleanField(default=False)
@@ -52,3 +52,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = ['type']
 
     objects = UserManager()
+
+    # get photo
+    photo = ''
+
+    def get_photo(self):
+        return self.photo
+

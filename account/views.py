@@ -12,20 +12,21 @@ from .serializers import *
 User = get_user_model()
 
 
-class Logout(APIView):
+class Logout(ObtainAuthToken):
 
     def get(self, request, **kwargs):
-        request.user.auth_token.delete()
-        logout(request)
+        if request.user.is_authenticated:
+            request.user.auth_token.delete()
+            logout(request)
 
         return JsonResponse({'is_logout': True})
 
 
-class RegisterUser(APIView):
+class RegisterAccount(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request, **kwargs):
-        serializer = UserRegisterSerializer(data=request.data)
+        serializer = AccountRegisterSerializer(data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return JsonResponse(serializer.data)
@@ -87,7 +88,17 @@ class AuthTokenLogin(ObtainAuthToken):
         serializer.is_valid(raise_exception=True)
         user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
-        return JsonResponse({'token': token.key})
+        return JsonResponse({'token': token.key, 'user_type': user.user_type})
+
+
+class CheckLogin(ObtainAuthToken):
+
+    def post(self, request):
+        is_login = request.user.is_authenticated
+        return JsonResponse({
+            'is_login': is_login,
+            'user_type': request.user.user_type if is_login else ''
+        })
 
 
 class ShortData(APIView):

@@ -1,5 +1,3 @@
-from decimal import Decimal
-from PIL import Image
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
@@ -7,10 +5,10 @@ from ckeditor.fields import RichTextField
 from django.db import models
 from django.db.models import Sum
 from django.utils.html import format_html
-# from django.contrib.auth.models import User, AbstractUser
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
+from teachersbackend import helpers
 User = get_user_model()
 
 
@@ -122,7 +120,6 @@ class Teacher(models.Model):
     phone = models.CharField(max_length=20, blank=False, verbose_name='Телефон')
     phone2 = models.CharField(max_length=20, blank=True, verbose_name='Запасной телефон')
     post = models.CharField(max_length=100, blank=True, verbose_name='Дольжность')
-    telegram = models.CharField(max_length=100, blank=True, verbose_name='Телеграм')
     youtube = models.CharField(max_length=100, blank=True, verbose_name='Ютуб')
     birth_date = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
     genders = (('male', 'Мурской'), ('female', 'Женский'))
@@ -137,10 +134,7 @@ class Teacher(models.Model):
     def save(self, *args, **kwargs):
         instance = super(Teacher, self).save(*args, **kwargs)
         if self.photo:
-            image_path = f'{settings.MEDIA_ROOT}/{self.photo}'
-            image = Image.open(image_path)
-            image = image.resize((326, 326))
-            image.save(image_path, quality=100, optimize=True)
+            helpers.image_compress(self.photo)
         return instance
 
     def __str__(self):
