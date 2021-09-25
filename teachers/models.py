@@ -9,6 +9,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelatio
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import get_user_model
 from teachersbackend import helpers
+from courses.models import *
+
 User = get_user_model()
 
 
@@ -124,12 +126,15 @@ class Teacher(models.Model):
     birth_date = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
     genders = (('male', 'Мурской'), ('female', 'Женский'))
     gender = models.CharField(max_length=6, choices=genders, blank=False, null=True, verbose_name='Пол')
+    is_repetiteur = models.BooleanField(blank=True, default=False, verbose_name='Занимается репититерством')
+    price_per_hour = models.CharField(max_length=10, blank=True, verbose_name='Стоимость часа репититерство')
     photo = models.ImageField(upload_to='uploads/photos/%Y/%m/%d/', blank=True, verbose_name='Фото')
 
     user = models.ForeignKey(User, blank=False, null=False, related_name='teacher', on_delete=models.CASCADE, verbose_name='Учитель')
     location = models.ForeignKey(Location, null=True, on_delete=models.DO_NOTHING, verbose_name='Адрес')
     specialization = models.ForeignKey(Specialization, null=True, on_delete=models.DO_NOTHING, verbose_name='Специализация')
-    vote = GenericRelation('Vote', related_query_name='teachers')
+    vote = GenericRelation(Vote, related_query_name='teachers')
+    courses = GenericRelation(Course, related_name='teacher', verbose_name='Курсы')
 
     def save(self, *args, **kwargs):
         instance = super(Teacher, self).save(*args, **kwargs)

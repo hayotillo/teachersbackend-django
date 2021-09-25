@@ -147,6 +147,8 @@ class TeacherSerializer(serializers.ModelSerializer):
             'sur_name',
             'birth_date',
             'gender',
+            'is_repetiteur',
+            'price_per_hour',
             'photo',
             'post',
             'about',

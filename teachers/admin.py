@@ -4,7 +4,7 @@ from .models import *
 
 # teacher
 class TeacherAdmin(admin.ModelAdmin):
-    prepopulated_fields = {'slug': ('id', 'first_name', 'last_name', 'sur_name')}
+    prepopulated_fields = {'slug': ('first_name', 'last_name', 'sur_name')}
     fields = (
         'username_tag',
         'photo_tag',
@@ -20,17 +20,21 @@ class TeacherAdmin(admin.ModelAdmin):
         'phone',
         'phone2',
         'post',
-        'telegram',
         'youtube',
         'location',
-        'specialization'
+        'specialization',
     )
-    readonly_fields = ('username_tag', 'photo_tag')
+    readonly_fields = ('id', 'username_tag', 'photo_tag')
 
-    # def save_model(self, request, obj, form, change):
-    #     if not change:
-    #         obj.user = request.user
-    #     obj.save()
+    def save_model(self, request, obj, form, change):
+        is_new = not change
+        if is_new:
+            obj.user = request.user
+        obj.save()
+
+        if is_new:
+            obj.slug = f'{obj.id}-{obj.slug}'
+        obj.save()
 
 
 # portfolio
