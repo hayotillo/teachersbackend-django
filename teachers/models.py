@@ -126,7 +126,7 @@ class Teacher(models.Model):
     birth_date = models.DateField(blank=True, null=True, verbose_name='Дата рождения')
     genders = (('male', 'Мурской'), ('female', 'Женский'))
     gender = models.CharField(max_length=6, choices=genders, blank=False, null=True, verbose_name='Пол')
-    is_repetiteur = models.BooleanField(blank=True, default=False, verbose_name='Занимается репититерством')
+    is_coach = models.BooleanField(blank=True, default=False, verbose_name='Занимается репититерством')
     price_per_hour = models.CharField(max_length=10, blank=True, verbose_name='Стоимость часа репититерство')
     photo = models.ImageField(upload_to='uploads/photos/%Y/%m/%d/', blank=True, verbose_name='Фото')
 

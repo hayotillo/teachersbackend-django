@@ -1,10 +1,11 @@
 from django.contrib import admin
+from django.utils.text import slugify
 from .models import *
 
 
 # teacher
 class TeacherAdmin(admin.ModelAdmin):
-    prepopulated_fields = {'slug': ('first_name', 'last_name', 'sur_name')}
+
     fields = (
         'username_tag',
         'photo_tag',
@@ -33,7 +34,7 @@ class TeacherAdmin(admin.ModelAdmin):
         obj.save()
 
         if is_new:
-            obj.slug = f'{obj.id}-{obj.slug}'
+            obj.slug = slugify(f'{obj.id} {obj.name}')
         obj.save()
 
 

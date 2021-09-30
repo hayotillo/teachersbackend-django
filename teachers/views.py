@@ -102,7 +102,13 @@ class TeacherListView(ListAPIView):
     serializer_class = TeacherListSerializer
 
     def get(self, request, *args, **kwargs):
-        queryset = Teacher.objects.filter(status='active')
+        is_coach = request.query_params.get('is_coach') == 'true'
+        print(request.query_params.get('is_coach'))
+        print(is_coach)
+        queryset = Teacher.objects.filter(
+            status='active',
+            is_coach=is_coach
+        ).order_by('-user__last_login')
         page = self.paginator.paginate_queryset(queryset, request)
         serializer = TeacherListSerializer(page, many=True)
         return self.paginator.get_paginated_response(serializer.data)
